@@ -13,6 +13,7 @@ export default defineConfig({
     vueDevTools(),
     vuetify({ autoImport: true }), // автоматический импорт компонентов
   ],
+  base: '/testovoe-infotech/',
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
