@@ -2,12 +2,11 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { books as initialBooks, BOOK_PLACEHOLDER } from '@/data/books'
 
-// для использования API
+// для API
 import { booksApi } from '@/services/books.api'
 
-
 export const useBooksStore = defineStore('books', () => {
-  // для использования API
+  // для API
   const isLoading = ref(false)
   const error = ref(null)
   const items = ref([])
@@ -41,10 +40,8 @@ export const useBooksStore = defineStore('books', () => {
     pagination.value.page = page
     return fetchList()
   }
-  // ─── CRUD ──────────────────────────────────────
   async function createWithApi(payload) {
     const res = await booksApi.create(payload)
-    // Новая книга — на первую страницу, где она точно видна
     pagination.value.page = 1
     await fetchList()
     return res.data
@@ -52,20 +49,19 @@ export const useBooksStore = defineStore('books', () => {
 
   async function updateWithApi(id, payload) {
     const res = await booksApi.patch(id, payload)
-    await fetchList() // перечитываем текущую страницу
+    await fetchList()
     return res.data
   }
 
   async function removeWithApi(id) {
     await booksApi.remove(id)
-    // Edge-case: удалили последний элемент на не-первой странице
     if (items.value.length === 1 && pagination.value.page > 1) {
       pagination.value.page -= 1
     }
     await fetchList()
   }
 
-  // ─── Сброс (при logout) ────────────────────────
+  // при logout
   function resetWithApi() {
     items.value = []
     pagination.value = { total: 0, page: 1, per_page: 12, total_pages: 1 }
@@ -76,7 +72,6 @@ export const useBooksStore = defineStore('books', () => {
 
   // Без API
 
-  // Копируем seed — чтобы не мутировать исходный массив
   const books = ref(
     initialBooks.map((b) => ({ ...b, image: BOOK_PLACEHOLDER }))
   )
@@ -86,7 +81,7 @@ export const useBooksStore = defineStore('books', () => {
       ? Math.max(...books.value.map((b) => b.id)) + 1
       : 1
     const book = { id: nextId, image: BOOK_PLACEHOLDER, ...payload }
-    books.value.unshift(book) // в начало — чтобы сразу увидеть
+    books.value.unshift(book)
     return book
   }
 

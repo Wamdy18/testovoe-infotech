@@ -32,7 +32,6 @@
             {{ book.year }} · ISBN: {{ book.isbn }}
           </v-card-subtitle>
 
-          <!-- Добавляем отображение автора -->
           <v-card-subtitle class="text-caption text-medium-emphasis">
             <v-icon size="14" class="mr-1">mdi-account</v-icon>
             {{ authorName(book.authorId) }}
@@ -60,8 +59,8 @@
       />
     </div>
 
-    <!-- CREATE / EDIT DIALOG -->
-    <v-dialog v-model="dialog" max-width="560">
+    <!-- create, edit -->
+    <v-dialog v-model="dialog" max-width="560" :persistent="isSaving">
       <v-card>
         <v-card-title>
           {{ editBook ? 'Редактировать книгу' : 'Создать книгу' }}
@@ -77,7 +76,6 @@
               class="mb-2"
             />
 
-            <!-- NEW: выбор автора -->
             <v-select
               v-model="form.authorId"
               :items="authorItems"
@@ -116,16 +114,16 @@
 
         <v-card-actions>
           <v-spacer />
-          <v-btn @click="dialog = false">Отмена</v-btn>
-          <v-btn color="primary" :disabled="!isFormValid" @click="save">
+          <v-btn @click="dialog = false" :disabled="isSaving">Отмена</v-btn>
+          <v-btn color="primary" :loading="isSaving" :disabled="!isFormValid" @click="save">
             {{ editBook ? 'Сохранить' : 'Создать' }}
           </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
-    <!-- DELETE CONFIRMATION -->
-    <v-dialog v-model="deleteDialog" max-width="420">
+    <!-- delete -->
+    <v-dialog v-model="deleteDialog" max-width="420" :persistent="isSaving">
       <v-card>
         <v-card-title>Удалить книгу?</v-card-title>
         <v-card-text>
@@ -133,11 +131,19 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn @click="deleteDialog = false">Отмена</v-btn>
-          <v-btn color="error" @click="confirmDelete">Удалить</v-btn>
+          <v-btn @click="deleteDialog = false" :disabled="isSaving">Отмена</v-btn>
+          <v-btn color="error" @click="confirmDelete" :loading="isSaving">Удалить</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
+    <v-snackbar
+      v-model="snackbar.show"
+      :color="snackbar.color"
+      location="top"
+      timeout="2500"
+    >
+      {{ snackbar.text }}
+    </v-snackbar>
   </v-container>
 </template>
 
@@ -152,62 +158,7 @@ const { books } = storeToRefs(booksStore)
 const authorsStore = useAuthorsStore()
 const { authors } = storeToRefs(authorsStore)
 
-// для API
-onMounted(() => {
-  // booksStore.fetchList()
-  // if (authors.value.length === 0) {
-  //   authorsStore.fetchList() // для v-select
-  // }
-})
-
-// function onPageChange(page) {
-//   booksStore.setPage(page)
-// }
-
-// async function save() {
-//   if (!isFormValid.value) return
-//   isSaving.value = true
-//   try {
-//     if (editBook.value) {
-//       await booksStore.update(editBook.value.id, { ...form })
-//       showSnackbar('Книга обновлена', 'success')
-//     } else {
-//       await booksStore.create({ ...form })
-//       showSnackbar('Книга создана', 'success')
-//     }
-//     dialog.value = false
-//   } catch (e) {
-//     const msg = e.response?.data?.errors?.[0]?.message || 'Не удалось сохранить'
-//     showSnackbar(msg, 'error')
-//   } finally {
-//     isSaving.value = false
-//   }
-// }
-
-// async function confirmDelete() {
-//   isDeleting.value = true
-//   try {
-//     await booksStore.remove(bookToDelete.value.id)
-//     showSnackbar('Книга удалена', 'success')
-//   } catch (e) {
-//     showSnackbar('Не удалось удалить', 'error')
-//   } finally {
-//     isDeleting.value = false
-//     deleteDialog.value = false
-//     bookToDelete.value = null
-//   }
-// }
-//
-
-// Опции для v-select
-const authorItems = computed(() => authors.value)
-
-// Хелпер: имя автора по id
-function authorName(id) {
-  return authors.value.find((a) => a.id === id)?.fullName ?? 'Автор не указан'
-}
-
-// ── Пагинация ───────────────────────────────────
+// пагинация
 const page = ref(1)
 const perPage = 12
 const pageCount = computed(() => Math.ceil(books.value.length / perPage))
@@ -216,17 +167,12 @@ const paginatedBooks = computed(() => {
   return books.value.slice(start, start + perPage)
 })
 
-// Если удалили последний элемент на странице — вернуться на предыдущую
-watch(pageCount, (val) => {
-  if (val > 0 && page.value > val) page.value = val
-})
-
-// ── Диалоги ─────────────────────────────────────
 const dialog = ref(false)
 const deleteDialog = ref(false)
 const editBook = ref(null)
 const bookToDelete = ref(null)
 const isFormValid = ref(false)
+const isSaving = ref(false)
 
 const form = reactive({
   title: '',
@@ -236,12 +182,84 @@ const form = reactive({
   description: '',
 })
 
+const snackbar = reactive({
+  show: false,
+  text: '',
+  color: 'success',
+})
 
+function showSnackbar(text, color = 'success') {
+  snackbar.text = text
+  snackbar.color = color
+  snackbar.show = true
+}
+
+const authorItems = computed(() => authors.value)
+
+// хелперы
+function authorName(id) {
+  return authors.value.find((a) => a.id === id)?.fullName ?? 'Автор не указан'
+}
+
+// валидация
 const rules = {
   required: (v) => !!v || 'Обязательное поле',
   year: (v) =>
     (v >= 1000 && v <= new Date().getFullYear()) || 'Некорректный год',
 }
+
+// для API
+onMounted(() => {
+  // booksStore.fetchList()
+  // if (authors.value.length === 0) {
+  //   authorsStore.fetchList()
+  // }
+})
+
+// function onPageChange(page) {
+//   booksStore.setPage(page)
+// }
+
+async function saveWithApi() {
+  if (!isFormValid.value) return
+  isSaving.value = true
+  try {
+    if (editBook.value) {
+      await booksStore.update(editBook.value.id, { ...form })
+      showSnackbar('Книга обновлена', 'success')
+    } else {
+      await booksStore.create({ ...form })
+      showSnackbar('Книга создана', 'success')
+    }
+    dialog.value = false
+  } catch (e) {
+    const msg = e.response?.data?.errors?.[0]?.message || 'Не удалось сохранить'
+    showSnackbar(msg, 'error')
+  } finally {
+    isSaving.value = false
+  }
+}
+
+async function confirmDeleteWithApi() {
+  isSaving.value = true
+  try {
+    await booksStore.remove(bookToDelete.value.id)
+    showSnackbar('Книга удалена', 'success')
+  } catch (e) {
+    const msg = e.response?.data?.errors?.[0]?.message || 'Не удалось сохранить'
+    showSnackbar(msg, 'error')
+  } finally {
+    isSaving.value = false
+    deleteDialog.value = false
+    bookToDelete.value = null
+  }
+}
+//
+
+// при удалении последнего элемента возвращаемся на предыдущую
+watch(pageCount, (val) => {
+  if (val > 0 && page.value > val) page.value = val
+})
 
 function resetForm() {
   Object.assign(form, {
@@ -272,16 +290,27 @@ function openEdit(book) {
   dialog.value = true
 }
 
-function save() {
+// имитация задержки
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+async function save() {
+  isSaving.value = true;
+  await delay(800)
   if (!isFormValid.value) return
 
   if (editBook.value) {
     booksStore.update(editBook.value.id, { ...form })
+
+    showSnackbar('Книга обновлена', 'success')
+    isSaving.value = false
   } else {
     booksStore.create({ ...form })
+    showSnackbar('Книга создана', 'success')
     page.value = 1
+    isSaving.value = false
   }
   dialog.value = false
+  isSaving.value = false
 }
 
 function openDelete(book) {
@@ -289,9 +318,13 @@ function openDelete(book) {
   deleteDialog.value = true
 }
 
-function confirmDelete() {
+async function confirmDelete() {
+  isSaving.value = true
+  await delay(800)
   booksStore.remove(bookToDelete.value.id)
+  showSnackbar('Книга удалена', 'success')
   deleteDialog.value = false
   bookToDelete.value = null
+  isSaving.value = false
 }
 </script>

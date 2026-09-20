@@ -61,16 +61,16 @@ import { authors } from '@/data/authors'
 const selectedYear = ref(2020)
 
 const topAuthors = computed(() => {
-  // 1. Фильтруем книги по году
+  // фильтр по году
   const forYear = books.filter((b) => b.year === selectedYear.value)
 
-  // 2. Считаем количество книг для каждого автора
+  // кол-во книг для автора
   const countByAuthor = forYear.reduce((acc, book) => {
     acc[book.authorId] = (acc[book.authorId] || 0) + 1
     return acc
   }, {})
 
-  // 3. Собираем с данными автора и сортируем
+  // сортировка
   return Object.entries(countByAuthor)
     .map(([authorId, count]) => {
       const author = authors.find((a) => a.id === Number(authorId))

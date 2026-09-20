@@ -52,7 +52,7 @@
       </v-col>
     </v-row>
 
-    <!-- CREATE / EDIT DIALOG -->
+    <!-- create, edit -->
     <v-dialog v-model="dialog" max-width="480">
       <v-card>
         <v-card-title>
@@ -80,7 +80,7 @@
       </v-card>
     </v-dialog>
 
-    <!-- DELETE CONFIRMATION -->
+    <!-- delete -->
     <v-dialog v-model="deleteDialog" max-width="420">
       <v-card>
         <v-card-title>Удалить автора?</v-card-title>

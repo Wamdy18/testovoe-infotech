@@ -1,11 +1,10 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-// Закомментировано, оставлено для демонстрации работы с api.
-// import api from '@/services/api'
+// для API
+import api from '@/services/api'
+import {authApi} from '@/services/auth.api'
 
-// ─────────────────────────────────────────────────────────────
-// MOCK-данные (для демонстрации без бэкенда)
-// ─────────────────────────────────────────────────────────────
+// без API
 const MOCK_USERS = [
   {
     email: 'admin@demo.com',
@@ -24,7 +23,6 @@ const MOCK_USERS = [
 const STORAGE_KEY = 'auth'
 
 export const useAuthStore = defineStore('auth', () => {
-  // Восстанавливаем сессию из localStorage при старте
   const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null')
   const user = ref(saved?.user || null)
   const token = ref(saved?.token || null)
@@ -34,11 +32,8 @@ export const useAuthStore = defineStore('auth', () => {
   const isGuest = computed(() => user.value?.role === 'guest')
   const role = computed(() => user.value?.role || null)
 
-  // ───────────────────────────────────────────────────────────
-  // MOCK-РЕАЛИЗАЦИЯ (для демонстрации без бэка)
-  // ───────────────────────────────────────────────────────────
+  // без API
   async function login(credentials) {
-    // Имитация задержки сети
     await new Promise((r) => setTimeout(r, 600))
 
     const found = MOCK_USERS.find(
@@ -67,13 +62,11 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
     localStorage.removeItem(STORAGE_KEY)
   }
+ //
 
-  // ───────────────────────────────────────────────────────────
-  // ПРОД-РЕАЛИЗАЦИЯ (закомментирована, оставлена для демонстрации)
-  // ───────────────────────────────────────────────────────────
-  /*
-  async function login(credentials) {
-    const { data } = await api.post('/auth/login', credentials)
+  // c API
+  async function loginWithApi(credentials) {
+    const { data } = await authApi.login(credentials)
     token.value = data.token
     user.value = data.user
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -81,15 +74,7 @@ export const useAuthStore = defineStore('auth', () => {
       user: data.user,
     }))
   }
-
-  function logout() {
-    // Опционально: дернуть /auth/logout для инвалидации refresh-токена
-    // api.post('/auth/logout').catch(() => {})
-    token.value = null
-    user.value = null
-    localStorage.removeItem(STORAGE_KEY)
-  }
-  */
+  //
 
   return {
     user,
@@ -100,40 +85,6 @@ export const useAuthStore = defineStore('auth', () => {
     isGuest,
     login,
     logout,
+    loginWithApi,
   }
 })
-
-
-
-
-
-
-
-
-
-
-
-
-
-// ПЕРВАЯ РЕАЛИЗАЦИЯ
-// export const useAuthStore = defineStore('auth', () => {
-//   const user = ref(null)
-//   const token = ref(localStorage.getItem('token') || null)
-
-//   const isAuthenticated = computed(() => !!token.value)
-
-//   async function login(credentials) {
-//     const { data } = await api.post('/auth/login', credentials)
-//     token.value = data.token
-//     user.value = data.user
-//     localStorage.setItem('token', data.token)
-//   }
-
-//   function logout() {
-//     token.value = null
-//     user.value = null
-//     localStorage.removeItem('token')
-//   }
-
-//   return { user, token, isAuthenticated, login, logout }
-// })
